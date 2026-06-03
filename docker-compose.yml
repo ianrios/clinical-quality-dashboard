@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: public.ecr.aws/docker/library/postgres:15
+    environment:
+      POSTGRES_DB: clinical_data
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./database/bootstrap.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  seed:
+    build: ./database
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/clinical_data
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build: ./api
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/clinical_data
+      NODE_ENV: development
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: http://localhost:3000
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  pgdata:

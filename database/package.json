@@ -1,0 +1,12 @@
+{
+  "name": "database-seeder",
+  "version": "1.0.0",
+  "description": "Database seeder for clinical quality dashboard",
+  "main": "seed-data.js",
+  "scripts": {
+    "seed": "node seed-data.js"
+  },
+  "dependencies": {
+    "pg": "^8.11.3"
+  }
+}

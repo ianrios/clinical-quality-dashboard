@@ -101,55 +101,7 @@ Navigate to http://localhost:5173 and experience these issues firsthand.
 
 ## Your Tasks
 
-### Task 1: Optimize Quality Dashboard Performance & Usability ⚠️ SLOW
-
-**User Story:**
-"As a research coordinator, I'm frustrated with the Quality Dashboard. It takes forever to load when I first open the app - I sometimes think it's frozen. Once it finally loads, the numbers are really hard to read and I have to squint to make sense of the quality scores. I need this dashboard to be fast and easy to use so I can quickly review our study data without getting a headache."
-
-**Your Task:**
-1. **Diagnose the issues**: Use the application, investigate the codebase, and identify the specific performance and usability problems causing the user's frustration
-2. **Fix the problems**: Implement solutions to address all issues you discover
-3. **Document your findings**: Explain what you found, what you changed, and measure the improvements
-
-Navigate to http://localhost:5173 and experience the issues firsthand.
-
-### Task 2: Build Participant Summary Report 🆕 NEW
-
-**User Story:**
-"As a research coordinator, I need to view aggregate participant data by study so I can quickly understand the composition and characteristics of each study cohort. I would also like to share links to specific study summaries with colleagues. Eventually I will want to drill down into individual participant details, but for now, I just need the aggregate summary view."
-
-**Business Requirements:**
-Research coordinators need to query participants by study and see an aggregate summary including:
-- Total participant count
-- Age distribution (average, min, max)
-- Gender breakdown
-- Site distribution
-- Average measurement count per participant
-- Date range of data collection
-
-**Your Task:**
-Implement a complete Participant Summary Report in the UI.
-
-### Task 3: Database Schema Design Proposal 📝 DESIGN
-
-**Context:**
-The current application uses a single denormalized table with ~500K rows. While this works for the current scale, the business is planning significant expansion:
-- Adding 20+ new studies over the next year
-- Each study may have 5,000-10,000 participants
-- Expanding to 50+ measurement types
-- Projected growth to 50-100 million rows within 2 years
-- Need to support more complex queries (participant history, site analytics, longitudinal studies)
-
-**Your Task:**
-Based on your experience implementing Tasks 1 & 2, write a design proposal to optimize the data layer. Your design proposal may include schema changes, DB infrastructure strageies or alternative technologies.
-
-Include:
-- Architecture and/or ERD Diagram
-- Expected performance/scaling impact
-- Downsides/radeoffs
-- Rationale
-
-**Deliverable:** A written document (Markdown, PDF, or included in your README) explaining your proposed design. You do NOT need to implement this schema - focus on clear explanation and justification of your decisions.
+Outlined in the tasks/ folder
 
 ## Submission Instructions
 

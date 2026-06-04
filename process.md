@@ -6,4 +6,6 @@
 6. killed the setup claude to start fresh with a new context for task 1
 7. got a new claude instance to install the packages and make sure local development was good to go by setting up a simple .nvmrc
 8. chatted with a planning agent to create a claude md for future sessions (agent 3)
-9.
+9. got interviewed with agent 4, a planning agent, to create the plan for task 1.
+10. plan created, got a sub agent to investigate the plan
+11. created planning agent templates for task 2 and 3, created execution agent prompt (decided not to use it instead will break up each chunk of task one into smaller execution agent plan and execute steps)

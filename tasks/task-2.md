@@ -28,3 +28,6 @@ Research coordinators need to query participants by study and see an aggregate s
 Implement a complete Participant Summary Report in the UI.
 
 As you work on this task, Document the Approach, architecture, design, major changes, Performance improvements with before/after metrics, Database optimizations (indexes, query changes) and anything else in a task-1-retro-summary.md file. if the file exists, add to it.
+
+**Decision Points:**
+- **Propose upfront:** Which aggregations should live in the database query vs. computed in the frontend? (e.g., age distribution calculation, site distribution rollup)

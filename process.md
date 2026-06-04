@@ -4,4 +4,6 @@
 4. I decided the easiest way to batch these 3 tasks from the readme would be to create a tasks folder so that agents wouldnt over index and pull in too many files to the context on load
 5. initial thoughts are to preload data, leveraging caching and skeleton loaders. the graph looks a bit messy with the text overlaying the key, so i want to move the key to the right or the left for the Quality Score Distribution by Study, i dont understand what the columns are in Study Details, so i would want on hover descriptions, i want the navbar to be sticky, so that i dont need to scroll to the top to see it. i think the main issue with the data is that the front end might be waiting for calculations to finish when we could be storing calculated data perhaps?
 6. killed the setup claude to start fresh with a new context for task 1
-7. got a new claude instance to install the packages and make sure local development was good to go by setting up a simple claude md for future sessions
+7. got a new claude instance to install the packages and make sure local development was good to go by setting up a simple .nvmrc
+8. chatted with a planning agent to create a claude md for future sessions (agent 3)
+9.

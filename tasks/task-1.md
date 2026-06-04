@@ -11,3 +11,8 @@
 Navigate to http://localhost:5173 and experience the issues firsthand.
 
 As you work on this task, Document the Approach, architecture, design, major changes, Performance improvements with before/after metrics, Database optimizations (indexes, query changes) and anything else in a task-1-retro-summary.md file. if the file exists, add to it.
+
+**Decision Points:**
+- UX improvements to propose separately (before implementing): sticky navbar, repositioning Quality Score Distribution graph key, hover descriptions on column headers
+- Consider: Should calculated aggregations be pre-computed and stored in the database, or computed at query/render time? (Storage vs. speed tradeoff)
+- Consider: Frontend caching/memoization vs. backend query optimization—which gives better ROI?

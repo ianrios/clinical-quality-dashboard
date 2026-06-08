@@ -33,6 +33,12 @@ DOCKER_HOST="unix://$HOME/.colima/default/docker.sock" docker-compose down && DO
 
 **⚠️ Always use `--build`.** `docker-compose up` without `--build` reuses cached images and will not pick up source file changes in any service directory.
 
+**⚠️ Schema changes require `-v` to take effect.** `docker-compose down` without `-v` keeps the `pgdata` named volume. PostgreSQL's init scripts (`docker-entrypoint-initdb.d/`) only run on an empty data directory. If you change `bootstrap.sql` (e.g. adding indexes), use:
+```bash
+DOCKER_HOST="unix://$HOME/.colima/default/docker.sock" docker-compose down -v && DOCKER_HOST="unix://$HOME/.colima/default/docker.sock" docker-compose up -d --build
+```
+Then wait for the seed to finish (~2 min) before verifying schema. A regular `down && up --build` will silently skip the new SQL.
+
 Wait 30–60 seconds for Vite to report "ready in X ms", then refresh the browser. See `tasks/task-1-retro-summary.md` for details on why this is necessary.
 
 ## Memory vs Repository Documentation

@@ -1,3 +1,15 @@
+export interface StudyList {
+  study_id: string;
+  study_name: string;
+  study_phase: string;
+}
+
+export interface StudyListResponse {
+  data: StudyList[];
+  executionTime: string;
+  executionTimeSeconds: string;
+}
+
 export interface QualityDistribution {
   study_id: string;
   study_name: string;

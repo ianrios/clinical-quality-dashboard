@@ -17,3 +17,5 @@
 17. discovered we were missing an idempotency guard which caused the database to re-seed on top of existing data each time we restarted docker
 18. fixed idempotency guard and am ready to start working on bulk of task 1 after dogfooding local agent repo system with sub tasks and planning. fixed tsx errors
 19. came up with a way to measure lcp pre and post task 1
+20. planned skeleton loaders and migration process with agent.
+21. discussed what indexes I should add in the migration with an agent

@@ -44,16 +44,38 @@ Neither strategy is correct. The right approach is lazy-loaded components with c
 ## Key Decisions Made
 
 ### Aggregation: compute at query time, not pre-stored
-All 4 per-study metrics (total, avg, high-quality, low-quality) can be computed in a single SQL `GROUP BY` with `FILTER` aggregates. With a `study_id` index, this replaces 21 sequential scans with one indexed group scan. The data is seeded and stable, so materialized views or pre-computed storage are not necessary at this scale. Revisit if the dataset becomes dynamic or query volume grows significantly.
+All per-study metrics can be computed in a single SQL `GROUP BY` with `FILTER` aggregates. With indexes, this replaces 21 sequential scans with one indexed group scan. The data is seeded and stable, so materialized views or pre-computed storage are not necessary at this scale. Revisit if the dataset becomes dynamic or query volume grows significantly.
 
-### Client-side data management: React Query (TanStack Query)
-React Query is the right tool because this is a server state problem, not a client state problem. It provides: request deduplication (no duplicate in-flight fetches), configurable stale/cache time (so tab switches show cached data instantly), background revalidation, and built-in loading/error states that work naturally with Suspense and skeleton loaders. This directly supports LCP improvements — content can render progressively as data arrives rather than waiting for everything before showing anything. A home-built solution with `useRef` or component-level state would re-invent this wheel without the reliability guarantees.
+### Split endpoint design: fast metadata + slow aggregations
+The original monolithic `/api/studies/overview` blocked all rendering until a slow aggregation completed. We split into three endpoints so components can render structure immediately and fill in data progressively:
+- `GET /api/studies/list` — `SELECT DISTINCT` only, no aggregation. Returns study_id, study_name, study_phase in ~5ms. Shared base layer for both tabs.
+- `GET /api/studies/overview` — `GROUP BY` aggregation for participant_count, total_measurements, site_count.
+- `GET /api/quality/distribution` — `GROUP BY` aggregation for quality metrics.
 
-### Score display: percentage with navbar toggle
-The 0–1 scale is the native format coordinators may be trained on. Switching to percentage unilaterally risks confusing users. A navbar toggle (decimal ↔ percentage) lets each user choose their preferred format. Full precision is preserved — no truncation — so the toggle is purely a display transform.
+`total_measurements` appears in both slow endpoints intentionally. A `COUNT(*)` during an already-running GROUP BY costs almost nothing, and avoiding the coupling between endpoints is worth more than the marginal saving of computing it once.
 
-### Database migration: SQL migration file in the repo
-Changes to the running database (adding indexes) should live as a versioned SQL file (`database/migrations/001_add_indexes.sql`) applied via `docker exec`. This keeps the change in git, is idempotent (`IF NOT EXISTS`), and documents exactly what was added and why. Bootstrap.sql is updated in parallel so future container rebuilds also get the indexes.
+### Client-side data management: React Query (TanStack Query) as shared cache
+React Query's `QueryClient` is the shared data store — no separate React context needed. Components sharing the same query key (e.g. `['studies', 'list']`) get the same cached result from one network request. App.tsx prefetches all three endpoints on mount so both tabs' data is in-flight immediately regardless of which tab is active. Tab switches are instant (cached). This directly supports LCP improvements — content renders progressively rather than waiting for all data.
+
+### Progressive rendering: field-level skeleton, not component-level
+Skeleton loaders apply at the field/cell level within a component, not as whole-component placeholders. Components render the structure they can from fast queries immediately, then fill in slow-query fields as they arrive:
+- StudyOverview card shells (name, ID) render immediately from `studies/list`; count fields (Participants, Measurements, Sites) skeleton until `studies/overview` resolves.
+- QualityDashboard table study name column renders immediately from `studies/list`; quality metric cells skeleton until `quality/distribution` resolves.
+- QualityDashboard chart cannot meaningfully show partial data — spinner/grey placeholder until `quality/distribution` resolves in full.
+
+Skeleton loaders do not require streaming or progressive server responses. They work fine with single-fetch patterns — the benefit is perceptual: users see the layout and know what is loading.
+
+### Score display: percentage with navbar toggle switch
+The 0–1 scale is the native format coordinators may be trained on. Switching to percentage unilaterally risks confusing users. A toggle switch in the navbar (right side, decimal ↔ %) lets each user choose their preferred format. Full precision is preserved — no truncation — so the toggle is purely a display transform passed as a `showPercent` boolean prop to `QualityDashboard`.
+
+### Index strategy: four composite indexes in bootstrap.sql only
+Indexes live in `bootstrap.sql` as the single source of truth — no separate migration file (which would be redundant and create drift risk for a dev environment). All four use `IF NOT EXISTS` and apply on every fresh container start:
+1. `(study_id)` — powers all GROUP BY study_id queries
+2. `(study_id, (quality_score::numeric))` — covering index for quality/distribution; no heap access needed
+3. `(study_id, participant_id)` — COUNT(DISTINCT participant_id) walks index in order
+4. `(study_id, site_id)` — COUNT(DISTINCT site_id) walks index in order
+
+The expression index syntax `(quality_score::numeric)` requires PostgreSQL 11+. We run PostgreSQL 15.
 
 ---
 
@@ -61,15 +83,15 @@ Changes to the running database (adding indexes) should live as a versioned SQL 
 
 | File | What changed |
 |------|-------------|
-| `database/bootstrap.sql` | Added index definitions |
-| `database/migrations/001_add_indexes.sql` | Migration file for live container |
-| `api/src/routes/quality.routes.ts` | Replaced N+1 loop with single GROUP BY query |
-| `api/src/routes/studies.routes.ts` | Same GROUP BY treatment (in scope) |
+| `database/bootstrap.sql` | Added four composite indexes |
+| `api/src/routes/quality.routes.ts` | Replaced N+1 loop with single GROUP BY + FILTER query; parameterized queries (was string interpolation) |
+| `api/src/routes/studies.routes.ts` | Added new `GET /list` route (fast SELECT DISTINCT); rewrote `GET /overview` as single GROUP BY; parameterized queries |
 | `frontend/package.json` | Added `@tanstack/react-query` |
 | `frontend/src/main.tsx` | Wrapped app in QueryClientProvider |
-| `frontend/src/App.tsx` | Sticky nav, lazy imports, Suspense wrappers, removed display:none, score toggle state |
-| `frontend/src/components/QualityDashboard.tsx` | React Query hook, skeleton loader, legend right, column tooltips, score toggle prop |
-| `frontend/src/components/StudyOverview.tsx` | React Query hook, skeleton loader |
+| `frontend/src/types.ts` | Added `StudyList` interface |
+| `frontend/src/App.tsx` | Prefetch all three queries on mount; lazy imports + Suspense boundaries; decimal/% toggle switch in navbar (right side); removed display:none pattern |
+| `frontend/src/components/QualityDashboard.tsx` | Two useQuery hooks (studies/list + quality/distribution); field-level skeleton on metric cells; spinner on chart; legend moved right; column header tooltips; showPercent prop |
+| `frontend/src/components/StudyOverview.tsx` | Two useQuery hooks (studies/list + studies/overview); card shells render immediately; field-level skeleton on count fields; fixed "Phase: Phase 3" redundancy |
 
 ---
 
@@ -110,8 +132,9 @@ Sticky navbar was implemented but required a full container rebuild to verify. D
 
 | Metric | Before (wall-clock) | After (wall-clock) |
 |--------|--------------------|--------------------|
-| API `executionTime` (quality) | — | — |
-| API `executionTime` (studies) | — | — |
+| API `executionTime` quality/distribution | ~1977ms (1 of 3–4 sequential calls) | 269ms warm / 509ms cold |
+| API `executionTime` studies/overview | not measured (N+1 pattern) | 639ms warm |
+| API `executionTime` studies/list (new) | n/a | 309ms warm |
 | LCP (first load) | — | — |
 | Tab switch (return visit) | — | — |
 
@@ -119,7 +142,40 @@ Sticky navbar was implemented but required a full container rebuild to verify. D
 
 ---
 
+## Session Learnings (Items 3 + 4 — React Query setup + indexes)
+
+### pgdata volume persists across `docker-compose down`
+`docker-compose down` without `-v` keeps named volumes. PostgreSQL's `docker-entrypoint-initdb.d` scripts only run on a fresh (empty) data directory. After adding indexes to `bootstrap.sql`, a regular restart produced an empty "Indexes:" section — the new SQL never ran. Fix: use `docker-compose down -v` to drop volumes whenever schema changes need to be validated end-to-end.
+
+This is the correct dev workflow for any `bootstrap.sql` change: `docker-compose down -v && docker-compose up -d --build`, then wait for the seed to finish (~2 min).
+
+### All four indexes confirmed via `\d clinical_data_raw`
+```
+"idx_clinical_study_id"          btree (study_id)
+"idx_clinical_study_participant"  btree (study_id, participant_id)
+"idx_clinical_study_quality"      btree (study_id, (quality_score::numeric))
+"idx_clinical_study_site"         btree (study_id, site_id)
+```
+Expression index syntax `(quality_score::numeric)` was accepted by PostgreSQL 15 without issue.
+
+---
+
 ## Session Learnings (Problem #1 — fetchCount fix)
+
+---
+
+## Session Learnings (Items 5 + 6 — Backend query rewrites)
+
+### N+1 eliminated, SQL injection removed
+Both routes replaced string interpolation (`WHERE study_id = '${study.study_id}'`) with a single `GROUP BY` query. No parameterized placeholders needed on these specific queries since there are no user-supplied filter values — the GROUP BY aggregates the whole table. The SQL injection risk was in the loop pattern itself, which is gone.
+
+### Execution time improvement: quality/distribution
+- Before: ~1977ms per API call × 3–4 calls per page load = ~6–8s total blocking time
+- After: 269ms (warm cache), 509ms (cold) for a single call
+- The covering index `(study_id, (quality_score::numeric))` allows the GROUP BY + FILTER aggregation without heap access
+
+### studies/list SELECT DISTINCT is slower than expected (309ms warm)
+A `SELECT DISTINCT study_id, study_name, study_phase` across 500K rows returning only 5 unique combinations takes 309ms warm. The `idx_clinical_study_id` index covers `study_id` only — PostgreSQL still hits the heap to fetch `study_name` and `study_phase`. This is acceptable for now (it's the fast endpoint that unblocks progressive rendering); revisit with a covering index on all three columns if needed.
 
 ### HAR Evidence
 - Before: 4 sequential requests to `/api/quality/distribution` (3339ms + 2180ms + 1771ms + 1752ms)

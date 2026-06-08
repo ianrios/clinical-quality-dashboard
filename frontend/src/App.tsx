@@ -18,10 +18,6 @@ function App() {
     queryClient.prefetchQuery(qualityDistributionQuery);
   }, [queryClient]);
 
-  const handleRefresh = () => {
-    queryClient.invalidateQueries();
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="sticky top-0 z-10 bg-white shadow-sm">
@@ -77,13 +73,6 @@ function App() {
                   <span className="text-sm text-gray-500">%</span>
                 </div>
               )}
-              <button
-                onClick={handleRefresh}
-                className="text-sm text-gray-500 hover:text-gray-700 border border-gray-200 hover:border-gray-300 rounded px-3 py-1.5 transition-colors"
-                title="Clear cache and reload all data"
-              >
-                ↻ Refresh
-              </button>
             </div>
           </div>
         </div>

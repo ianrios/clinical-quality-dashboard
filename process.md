@@ -15,3 +15,5 @@
 15. reverted "hot reload" - agent was wrong - make sure claude md describes restarting docker after changes so that everything works as expected
 16. worked on the fetchCount bug and hardened the agent workflow for future sessions so that it knows exactly how i need to interact with the repo
 17. discovered we were missing an idempotency guard which caused the database to re-seed on top of existing data each time we restarted docker
+18. fixed idempotency guard and am ready to start working on bulk of task 1 after dogfooding local agent repo system with sub tasks and planning. fixed tsx errors
+19. came up with a way to measure lcp pre and post task 1

@@ -13,3 +13,5 @@
 13. noticed that each time we change tabs, we fetch fresh data, which means we need some sort of local react context storage in addition to the data caching im planning to implement.
 14. broke task 1 plan into 10 distinct pieces with dependency ordering and status tracking
 15. reverted "hot reload" - agent was wrong - make sure claude md describes restarting docker after changes so that everything works as expected
+16. worked on the fetchCount bug and hardened the agent workflow for future sessions so that it knows exactly how i need to interact with the repo
+17. discovered we were missing an idempotency guard which caused the database to re-seed on top of existing data each time we restarted docker

@@ -116,6 +116,12 @@ async function seedDatabase() {
     await client.connect();
     console.log('Connected to database');
 
+    const existing = await client.query('SELECT COUNT(*) as count FROM clinical_data_raw');
+    if (parseInt(existing.rows[0].count) > 0) {
+      console.log(`Database already contains ${existing.rows[0].count} rows. Skipping seed.`);
+      return;
+    }
+
     // Target: ~500K rows (adjustable by changing participants per study or measurements per participant)
     const PARTICIPANTS_PER_STUDY = 1000; // 5 studies x 1000 = 5000 participants
     const MEASUREMENTS_PER_PARTICIPANT = 100; // 5000 x 100 = 500,000 measurements

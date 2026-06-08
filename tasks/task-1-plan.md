@@ -16,7 +16,7 @@ Full investigation findings and root cause analysis: see `tasks/task-1-retro-sum
 
 | # | Problem | File | Category |
 |---|---------|------|----------|
-| 1 | `fetchCount` state in `useEffect` dep array → 3–4 fetches per mount | `QualityDashboard.tsx` only | Bug |
+| 1 | `fetchCount` state in `useEffect` dep array → 3–4 fetches per mount | `QualityDashboard.tsx` only | Bug | ✅ |
 | 2 | `1 + (N × 4)` sequential full-table scans per request (N = distinct studies) | `quality.routes.ts` | Performance |
 | 3 | `1 + (N × 3)` sequential full-table scans per request (N = distinct studies) | `studies.routes.ts` | Performance |
 | 4 | No index on `study_id` → every query is a 500K-row sequential scan | `database/bootstrap.sql` | Performance |
@@ -116,7 +116,7 @@ Add `title` attributes and `cursor-help` class to each `<th>` in the Study Detai
 | 2 | Wrap app in `QueryClientProvider` in `frontend/src/main.tsx` | Task 1 | ⭐ Easy | ⬜ |
 | 3 | Create `database/migrations/001_add_indexes.sql` (study_id + quality_score indexes) | None | ⭐ Easy | ⬜ |
 | 4 | Update `database/bootstrap.sql` with same index definitions | Task 3 | ⭐ Easy | ⬜ |
-| 5 | Add `sticky top-0 z-10` to `<nav>` in `frontend/src/App.tsx` | None | ⭐ Easy | ⬜ |
+| 5 | Add `sticky top-0 z-10` to `<nav>` in `frontend/src/App.tsx` | None | ⭐ Easy | ✅ |
 | 6 | Rewrite `api/src/routes/quality.routes.ts` — replace N+1 loop with single GROUP BY query | Tasks 3–4 | ⭐⭐ Medium | ⬜ |
 | 7 | Rewrite `api/src/routes/studies.routes.ts` — replace N+1 loop with single GROUP BY query | Tasks 3–4 | ⭐⭐ Medium | ⬜ |
 | 8 | Refactor `QualityDashboard.tsx` — migrate to `useQuery`, add legend right + column tooltips + decimal/% toggle | Tasks 2, 6 | ⭐⭐⭐ Complex | ⬜ |

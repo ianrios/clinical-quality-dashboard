@@ -115,4 +115,21 @@ Sticky navbar was implemented but required a full container rebuild to verify. D
 | LCP (first load) | — | — |
 | Tab switch (return visit) | — | — |
 
-*(Before/after wall-clock times to be filled in during implementation)*
+*(Remaining wall-clock times to be filled in as subsequent tasks complete)*
+
+---
+
+## Session Learnings (Problem #1 — fetchCount fix)
+
+### HAR Evidence
+- Before: 4 sequential requests to `/api/quality/distribution` (3339ms + 2180ms + 1771ms + 1752ms)
+- After: 1 request (1977ms)
+- Fix: removed `fetchCount` state and dep array entry from `QualityDashboard.tsx`
+
+### Seed Idempotency Bug Discovered
+The `seed-data.js` script had no guard against re-running on an already-populated database. Every `docker-compose down && up` appended 500K rows to the existing data because the `pgdata` named volume persists across restarts. With 1.5M rows, the N+1 queries took ~5.78s (vs ~1.7s at 500K rows), making the fix appear to regress performance.
+
+Fix: added a row count check at startup in `seed-data.js` — exits early if any rows exist. Also noted that `docker-compose up` (without `--build`) does not rebuild images; use `--build` when source files in a service directory change.
+
+### Docker Rebuild Rule Clarified
+`docker-compose down && up` reuses existing images. If a service's source files changed, `--build` is required to pick up the change. The CLAUDE.md rebuild command should always include `--build` so code changes are reflected.

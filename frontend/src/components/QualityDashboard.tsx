@@ -6,8 +6,6 @@ function QualityDashboard() {
   const [data, setData] = useState<QualityDistributionResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [fetchCount, setFetchCount] = useState(0);
-
   const fetchQualityData = async () => {
     setLoading(true);
     setError(null);
@@ -21,9 +19,6 @@ function QualityDashboard() {
 
       const result: QualityDistributionResponse = await response.json();
       setData(result);
-      if (fetchCount < 3) {
-        setFetchCount(fetchCount + 1);
-      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch data');
     } finally {
@@ -33,8 +28,7 @@ function QualityDashboard() {
 
   useEffect(() => {
     fetchQualityData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchCount]);
+  }, []);
 
   if (loading) {
     return (

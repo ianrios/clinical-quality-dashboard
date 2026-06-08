@@ -65,8 +65,8 @@ Skeleton loaders apply at the field/cell level within a component, not as whole-
 
 Skeleton loaders do not require streaming or progressive server responses. They work fine with single-fetch patterns — the benefit is perceptual: users see the layout and know what is loading.
 
-### Score display: percentage with navbar toggle switch
-The 0–1 scale is the native format coordinators may be trained on. Switching to percentage unilaterally risks confusing users. A toggle switch in the navbar (right side, decimal ↔ %) lets each user choose their preferred format. Full precision is preserved — no truncation — so the toggle is purely a display transform passed as a `showPercent` boolean prop to `QualityDashboard`.
+### Score display: percentage toggle scoped to Quality Dashboard
+The 0–1 scale is the native format coordinators may be trained on. A toggle switch (decimal ↔ %) is placed in the navbar but rendered only when the Quality Dashboard tab is active — Study Overview has no quality score data so the toggle is irrelevant there. Default is `%` (on). The toggle only reformats three values: Avg Quality (0-1 score → %) and the chart legend threshold labels (≥0.9 ↔ ≥90%). High Quality and Low Quality columns are raw counts and never convert — only the score converts. `showPercent` is passed as a prop from App.tsx so the navbar and the component stay in sync.
 
 ### Index strategy: four composite indexes in bootstrap.sql only
 Indexes live in `bootstrap.sql` as the single source of truth — no separate migration file (which would be redundant and create drift risk for a dev environment). All four use `IF NOT EXISTS` and apply on every fresh container start:
@@ -87,11 +87,14 @@ The expression index syntax `(quality_score::numeric)` requires PostgreSQL 11+. 
 | `api/src/routes/quality.routes.ts` | Replaced N+1 loop with single GROUP BY + FILTER query; parameterized queries (was string interpolation) |
 | `api/src/routes/studies.routes.ts` | Added new `GET /list` route (fast SELECT DISTINCT); rewrote `GET /overview` as single GROUP BY; parameterized queries |
 | `frontend/package.json` | Added `@tanstack/react-query` |
-| `frontend/src/main.tsx` | Wrapped app in QueryClientProvider |
-| `frontend/src/types.ts` | Added `StudyList` interface |
-| `frontend/src/App.tsx` | Prefetch all three queries on mount; lazy imports + Suspense boundaries; decimal/% toggle switch in navbar (right side); removed display:none pattern |
-| `frontend/src/components/QualityDashboard.tsx` | Two useQuery hooks (studies/list + quality/distribution); field-level skeleton on metric cells; spinner on chart; legend moved right; column header tooltips; showPercent prop |
+| `frontend/src/main.tsx` | Wrapped app in QueryClientProvider; staleTime: 5min on QueryClient defaultOptions |
+| `frontend/src/types.ts` | Added `StudyList` and `StudyListResponse` interfaces |
+| `frontend/src/App.tsx` | Prefetch all three queries on mount; lazy imports + Suspense boundaries; decimal/% toggle in navbar (visible on Quality Dashboard tab only, default on); removed display:none pattern |
+| `frontend/src/components/QualityDashboard.tsx` | Two useQuery hooks (studies/list + quality/distribution); field-level skeleton on metric cells; spinner on chart; legend moved right; column header tooltips; showPercent prop; horizontal chart default |
 | `frontend/src/components/StudyOverview.tsx` | Two useQuery hooks (studies/list + studies/overview); card shells render immediately; field-level skeleton on count fields; fixed "Phase: Phase 3" redundancy |
+| `frontend/src/api/queries.ts` | **New file** — pure query definitions (queryKey + queryFn) for all three endpoints; shared by both components and App.tsx prefetch |
+| `frontend/src/components/Skeleton.tsx` | **New file** — shared shimmer primitive used by both components |
+| `frontend/src/components/TooltipHeader.tsx` | **New file** — table column header with ⓘ info icon; fixed-position tooltip using getBoundingClientRect() to escape table stacking context |
 
 ---
 
@@ -170,6 +173,11 @@ Expression index syntax `(quality_score::numeric)` was accepted by PostgreSQL 15
 
 ## Session Learnings (Problem #1 — fetchCount fix)
 
+### Root cause: self-incrementing state in useEffect dependency array
+`fetchCount` was both incremented inside the effect AND listed as a dependency. Every successful fetch triggered a re-render → dependency changed → effect re-ran → next fetch. The `eslint-disable-next-line react-hooks/exhaustive-deps` suppression comment was the tell — the original author knew the dependency array was wrong but suppressed the warning rather than fixing the root cause.
+
+Fix: remove `fetchCount` state entirely. The effect runs once (empty dep array) and React Query takes over re-fetch lifecycle from there.
+
 ---
 
 ## Session Learnings (Items 5 + 6 — Backend query rewrites)
@@ -197,3 +205,37 @@ Fix: added a row count check at startup in `seed-data.js` — exits early if any
 
 ### Docker Rebuild Rule Clarified
 `docker-compose down && up` reuses existing images. If a service's source files changed, `--build` is required to pick up the change. The CLAUDE.md rebuild command should always include `--build` so code changes are reflected.
+
+---
+
+## Session Learnings (Items 7 + 8 — Frontend component migration)
+
+### Shared components belong in separate files
+Initial implementation inlined the Skeleton shimmer and query definitions directly in component files. User correctly pushed back: extract shared primitives to their own files so they can be reused and read without noise. Three new files: `Skeleton.tsx`, `TooltipHeader.tsx`, `api/queries.ts`.
+
+### Tooltip z-index in table headers cannot be solved with CSS alone
+The ⓘ tooltip in a `<th>` inside a `<table>` sits inside a stacking context created by the table element. `z-index: 9999` on an `absolute`-positioned tooltip has no effect — it's clipped by the table's stacking context regardless of the z-index value. `bottom-full` positioned it above the header but off-screen; `top-full` covered the data rows.
+
+Fix: `position: fixed` with `getBoundingClientRect()` to compute exact viewport coordinates. The tooltip renders relative to the viewport, completely outside the table stacking context. `pointer-events: none` prevents it from interfering with mouse events.
+
+### Phase loads faster than Participants/Measurements/Sites — by design
+`study_phase` comes from the `studies/list` endpoint (fast SELECT DISTINCT, ~309ms). Participant, measurement, and site counts come from `studies/overview` (slower GROUP BY aggregation, ~639ms). This is intentional: name + ID + phase render from the fast query; counts skeleton until the slow query resolves. The apparent "stagger" is the progressive loading working correctly.
+
+### Skeleton count must match actual card row count
+After reverting an unapproved Phase badge to plain text, the skeleton had one extra row (for the badge placeholder that no longer existed). Skeleton templates must exactly mirror the real card structure — any mismatch is a visual bug during the loading state.
+
+---
+
+## Session Learnings (Item 9 — App.tsx, staleTime, percent toggle)
+
+### staleTime: 0 defeats prefetch on tab switch
+React Query's default `staleTime` is 0ms — data is immediately stale after fetching. When a component remounts (tab switch with `&&` conditional rendering), React Query sees stale data and re-fetches in the background even if the data was just fetched. `prefetchQuery` on mount is wasted if `staleTime` is 0. Fix: set `staleTime: 5 * 60 * 1000` on QueryClient defaultOptions — data stays fresh for 5 minutes, tab switches are instant with no network activity.
+
+### Percent toggle scope: only Avg Quality score converts, not counts
+The toggle converts the Avg Quality column (a 0–1 decimal score → %) because a score has a natural percent interpretation. High Quality and Low Quality are raw counts (e.g. 59,013 measurements) — converting them to "59.0% of total" changes the meaning of the column and was not requested. The chart legend threshold labels (≥0.9 ↔ ≥90%) update to match the display mode since they describe the score scale, not counts.
+
+### Chart bars and axis scale never change with the toggle
+The chart always shows absolute measurement counts on the axis (0–60,000). The toggle only changes: (1) Avg Quality table cell formatting, (2) legend label threshold notation. Changing the chart scale to percentages would reorder visual bar heights and confuse coordinators who use the chart to compare study sizes. The toggle is a display format for scores, not a chart rescaling control.
+
+### Colima VM disk fills up from accumulated Docker image layers
+After extended development, the Colima VM disk filled completely (I/O errors at the container level). Root cause: multiple `--build` rebuilds accumulate image layers that are never pruned. Fix: `colima delete && colima start --disk 60` for a fresh 60GB VM. Run `docker system prune` periodically to keep the VM disk clear. The prior default disk size was insufficient for sustained development work.

@@ -104,7 +104,24 @@ Add `title` attributes and `cursor-help` class to each `<th>` in the Study Detai
 
 ---
 
-## Verification
+## Task Breakdown (Ordered by Dependency & Complexity)
+
+| # | Task | Dependencies | Complexity | Status |
+|----|------|--------------|-----------|--------|
+| 1 | Add `@tanstack/react-query` to `frontend/package.json` | None | ⭐ Easy | ⬜ |
+| 2 | Wrap app in `QueryClientProvider` in `frontend/src/main.tsx` | Task 1 | ⭐ Easy | ⬜ |
+| 3 | Create `database/migrations/001_add_indexes.sql` (study_id + quality_score indexes) | None | ⭐ Easy | ⬜ |
+| 4 | Update `database/bootstrap.sql` with same index definitions | Task 3 | ⭐ Easy | ⬜ |
+| 5 | Add `sticky top-0 z-10` to `<nav>` in `frontend/src/App.tsx` | None | ⭐ Easy | ⬜ |
+| 6 | Rewrite `api/src/routes/quality.routes.ts` — replace N+1 loop with single GROUP BY query | Tasks 3–4 | ⭐⭐ Medium | ⬜ |
+| 7 | Rewrite `api/src/routes/studies.routes.ts` — replace N+1 loop with single GROUP BY query | Tasks 3–4 | ⭐⭐ Medium | ⬜ |
+| 8 | Refactor `QualityDashboard.tsx` — migrate to `useQuery`, add legend right + column tooltips + decimal/% toggle | Tasks 2, 6 | ⭐⭐⭐ Complex | ⬜ |
+| 9 | Refactor `StudyOverview.tsx` — migrate to `useQuery` hook, add skeleton | Tasks 2, 7 | ⭐⭐ Medium | ⬜ |
+| 10 | Update `frontend/src/App.tsx` — add lazy imports + Suspense boundaries for both components | Tasks 8, 9 | ⭐⭐ Medium | ⬜ |
+
+---
+
+## Verification Checklist
 
 1. Load `http://localhost:5173` — dashboard renders skeleton immediately, data appears within 1–2 seconds
 2. DevTools → Network tab — confirm exactly 1 request to `/api/quality/distribution` on load (was 3–4)

@@ -73,6 +73,29 @@ Changes to the running database (adding indexes) should live as a versioned SQL 
 
 ---
 
+## Development Workflow: Docker Hot Reload Not Reliable
+
+### Finding
+This project uses Docker with Colima on macOS. File system watch events (inotify) do not reliably propagate from the host into the container, causing Vite's file watcher to miss changes. When an agent edits code, the running container often does not detect the change and hot reload fails silently.
+
+### Why It Happens
+- Colima runs a Linux VM on macOS
+- Volume mounts bridge host files to the container via the VM's file system layer
+- File change events don't always propagate reliably through this bridge
+- Vite's `chokidar` file watcher in the container misses the notification
+
+### Solution
+After making code changes, agents **must** rebuild the containers:
+```bash
+DOCKER_HOST="unix://$HOME/.colima/default/docker.sock" docker-compose down && DOCKER_HOST="unix://$HOME/.colima/default/docker.sock" docker-compose up -d
+```
+Wait ~30–60 seconds for Vite to report "ready". Then refresh the browser. Do NOT assume hot reload works.
+
+### Impact on Task 5
+Sticky navbar was implemented but required a full container rebuild to verify. Document this in CLAUDE.md so future agents don't waste time troubleshooting hot reload when a rebuild is the only fix.
+
+---
+
 ## Performance Improvements
 
 | Metric | Before | After |

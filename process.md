@@ -12,3 +12,4 @@
 12. updated docker compose to allow front end hot reloading. litmus tested claude md on updating the default first tab to be study overview and saw that we were using css instead of true conditional rendering to show and hide that tab. fixed.
 13. noticed that each time we change tabs, we fetch fresh data, which means we need some sort of local react context storage in addition to the data caching im planning to implement.
 14. broke task 1 plan into 10 distinct pieces with dependency ordering and status tracking
+15. reverted "hot reload" - agent was wrong - make sure claude md describes restarting docker after changes so that everything works as expected

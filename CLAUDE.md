@@ -25,14 +25,13 @@ Or inline:
 DOCKER_HOST="unix://$HOME/.colima/default/docker.sock" docker-compose <command>
 ```
 
-**Frontend hot reload:** The frontend runs Vite dev server. For changes to be reflected in the running container, `docker-compose.yml` must mount the source code:
-```yaml
-frontend:
-  volumes:
-    - ./frontend/src:/app/src
+**⚠️ Hot reload is NOT reliable.** File system watch events (inotify) do not reliably propagate from the host into the Colima VM. Vite's file watcher may miss changes. After editing code, **always rebuild the containers** instead of assuming hot reload works:
+
+```bash
+DOCKER_HOST="unix://$HOME/.colima/default/docker.sock" docker-compose down && docker-compose up -d
 ```
 
-If changes still don't appear after adding the volume mount, rebuild with `docker-compose down && docker-compose up -d`.
+Wait 30–60 seconds for Vite to report "ready in X ms", then refresh the browser. See `tasks/task-1-retro-summary.md` for details on why this is necessary.
 
 ## Memory vs Repository Documentation
 
@@ -64,3 +63,11 @@ When implementing, the execution agent should:
 - Read `tasks/task-N-plan.md` and `tasks/task-N-retro-summary.md` for full context
 - Update `tasks/task-N-retro-summary.md` with actual before/after performance numbers
 - Not add features or fixes beyond what the approved plan describes
+
+## Verification Approach
+
+**Agent verifies:** Type safety (TypeScript), linting (ESLint), tests, code logic correctness, build success.
+
+**Agent does NOT:** Manually test UI/UX in browser via dev server.
+
+**User verifies:** Manual QA in browser. User is final voice on task completion. Document learnings in `tasks/task-N-retro-summary.md` for each subtask.

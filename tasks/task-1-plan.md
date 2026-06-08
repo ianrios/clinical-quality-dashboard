@@ -1,5 +1,9 @@
 # Task-1 Plan: Quality Dashboard Performance & Usability
 
+## Verification Model
+
+For each subtask: Agent implements and verifies via type checking, tests, and logic. User manually QA's in browser and is final voice on completion. Learnings documented in `task-1-retro-summary.md` per subtask.
+
 ## Context
 
 The Quality Dashboard loads slowly because of two compounding bugs: a frontend fetch loop in `QualityDashboard` (only) that calls the API 3–4× per mount, and a backend N+1 that fires sequential full-table scans per API call on a 500K-row unindexed table. Together these make the dashboard feel frozen. Separately, quality scores are hard to read and the chart layout has visual conflicts.

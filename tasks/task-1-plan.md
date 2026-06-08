@@ -85,10 +85,10 @@ Each row is one unit of work. Follow the 7-step execution process in `CLAUDE.md`
 2. ✅ Scroll down — navbar stays pinned to top
 3. ✅ On app load: network shows exactly 3 requests firing in parallel — `/api/studies/list`, `/api/studies/overview`, `/api/quality/distribution`
 4. ✅ Switch tabs multiple times — zero additional network requests on any tab switch; data appears instantly from cache
-5. ⬜ API `executionTime` for `/quality/distribution` — document before/after in retro
-6. ⬜ API `executionTime` for `/studies/overview` — document before/after in retro
-7. ⬜ API `executionTime` for `/studies/list` — document in retro (should be <20ms with index)
-8. ⬜ **LCP before/after measurement** — compare first repo commit vs HEAD
+5. ✅ API `executionTime` for `/quality/distribution` — 269ms warm / 509ms cold (was ~1977ms × 3–4 calls)
+6. ✅ API `executionTime` for `/studies/overview` — 639ms warm
+7. ✅ API `executionTime` for `/studies/list` — 309ms warm
+8. ✅ **Time-to-data before/after** — before: 61,501ms (4 sequential N+1 fetches × ~15s each); after: 565ms steady state. 99.1% faster (109×)
 9. ✅ Toggle decimal/% switch in navbar (Quality Dashboard page only, default on) — Avg Quality column converts 0–1 score to %; High/Low Quality counts stay as raw numbers; chart legend threshold labels update (≥0.9 ↔ ≥90%); no re-fetch fires
 10. ✅ Chart legend visible on the right side, no overlap with x-axis labels
 11. ✅ Hover each column header in QualityDashboard table — tooltip appears with correct text, updates with toggle

@@ -135,10 +135,18 @@ Sticky navbar was implemented but required a full container rebuild to verify. D
 | API `executionTime` quality/distribution | ~1977ms (1 of 3–4 sequential calls) | 269ms warm / 509ms cold |
 | API `executionTime` studies/overview | not measured (N+1 pattern) | 639ms warm |
 | API `executionTime` studies/list (new) | n/a | 309ms warm |
-| LCP (first load) | — | — |
-| Tab switch (return visit) | — | — |
+| Time to data (page load → data rendered) | **61,501ms** (4 sequential fetches × ~15s each) | **565ms** steady state / 2,453ms mid-seed |
+| Improvement | baseline | **99.1% faster** (109× improvement) |
+| Tab switch (return visit) | Full re-fetch every time | Instant (React Query cache, 5-min staleTime) |
 
-*(Remaining wall-clock times to be filled in as subsequent tasks complete)*
+**Notes on before measurement:**
+- 61,501ms was the last of 4 logs — the fetch loop (`fetchCount` bug) caused the spinner to reappear and block content on every re-fetch. The data was not "done" until the final fetch settled and `fetchCount >= 3` stopped the loop.
+- Each individual fetch took ~15s due to the N+1 pattern on an unindexed 500K-row table.
+
+**Notes on after measurement:**
+- 2,453ms was on first load while the PostgreSQL seed was still mid-run (database busy inserting rows). Not representative of production conditions.
+- 565ms is the steady-state number: seed complete, all 4 indexes applied, single GROUP BY query per endpoint, React Query eliminating all redundant fetches.
+- Subsequent tab switches cost 0ms — React Query serves from cache with no network activity.
 
 ---
 

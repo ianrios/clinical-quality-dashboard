@@ -60,17 +60,18 @@ Before saving to memory, ask: "Does every developer and every future agent need 
 ## Planning Convention
 
 Before implementing any task:
-1. Interview the user about pain points and decisions — do not assume intent
-2. Explore the codebase thoroughly, then create `tasks/task-N-plan.md` with: problems discovered, which files to change, the approach and reasoning, and a verification checklist. **No code in the plan** — the execution agent writes code from the intent described. Plans describe the what and why, not the how.
-3. Create or update `tasks/task-N-retro-summary.md` during planning with: investigation findings, root cause analysis (explain the problem in plain language, not just which files), key decisions made and why, and a before/after metrics table. The execution agent fills in wall-clock numbers after implementation.
-4. The plan must be approved by the user before any code is written.
+1. If the task is already clearly specified in the approved plan AND the user has stated which item to work on, **do not ask clarifying questions that are already answered by the plan**. Read the plan, describe the process, and begin.
+2. Only interview the user when intent is genuinely ambiguous or a decision is not covered by the plan.
+3. Explore the codebase thoroughly, then create `tasks/task-N-plan.md` with: problems discovered, which files to change, the approach and reasoning, and a verification checklist. **No code in the plan** — the execution agent writes code from the intent described. Plans describe the what and why, not the how.
+4. Create or update `tasks/task-N-retro-summary.md` during planning with: investigation findings, root cause analysis (explain the problem in plain language, not just which files), key decisions made and why, and a before/after metrics table. The execution agent fills in wall-clock numbers after implementation.
+5. The plan must be approved by the user before any code is written.
 
 ## Execution Convention
 
 When implementing a task, follow these steps **in order**. Do not skip or reorder. Do not tell the user to do step 3 — the agent does it.
 
 1. **Edit** — implement the fix as described in the approved plan. Scope strictly to what the plan says.
-2. **Verify** — run TypeScript type checking, linting, and any applicable tests. Fix errors before proceeding.
+2. **Verify** — run TypeScript type checking, linting, and any applicable tests (`npm test` in `frontend/` and `api/`). Fix errors before proceeding.
 3. **Rebuild containers** — run this on the user's behalf without being asked:
    ```bash
    DOCKER_HOST="unix://$HOME/.colima/default/docker.sock" docker-compose down && DOCKER_HOST="unix://$HOME/.colima/default/docker.sock" docker-compose up -d --build
@@ -81,11 +82,42 @@ When implementing a task, follow these steps **in order**. Do not skip or reorde
 6. **Update retro** — record any learnings, surprises, or root cause details in `tasks/task-N-retro-summary.md`.
 7. **Harden tooling** — if any recurring process failure or misunderstanding was identified, update `CLAUDE.md` or other artifacts so it cannot happen again in a future session.
 
-## Planning Convention
+## Test Infrastructure
 
-Before implementing any task:
-1. If the task is already clearly specified in the approved plan AND the user has stated which item to work on, **do not ask clarifying questions that are already answered by the plan**. Read the plan, describe the process, and begin.
-2. Only interview the user when intent is genuinely ambiguous or a decision is not covered by the plan.
-3. Explore the codebase thoroughly, then create `tasks/task-N-plan.md` with: problems discovered, which files to change, the approach and reasoning, and a verification checklist. **No code in the plan** — the execution agent writes code from the intent described. Plans describe the what and why, not the how.
-4. Create or update `tasks/task-N-retro-summary.md` during planning with: investigation findings, root cause analysis (explain the problem in plain language, not just which files), key decisions made and why, and a before/after metrics table. The execution agent fills in wall-clock numbers after implementation.
-5. The plan must be approved by the user before any code is written.
+Tests run **locally** (outside Docker). No container rebuild needed to run tests.
+
+### Frontend — Vitest
+```bash
+cd frontend && npm test          # single pass (CI)
+cd frontend && npm run test:watch # interactive watch mode
+```
+- Config: `frontend/vitest.config.ts` — environment is `jsdom` (localStorage available), globals enabled
+- Tests co-locate with source: `src/utils/dashboard.test.ts`, `src/api/queries.test.ts`
+
+### API — Jest + ts-jest
+```bash
+cd api && npm test
+```
+- Config: `api/jest.config.ts` — uses `ts-jest` preset, `node` environment
+- Tests co-locate with source: `src/utils/transform.test.ts`
+
+### Where to put new tests
+
+**Extract pure logic before testing.** Don't test inline component code — first move it to a `utils/` file, then test that file. This keeps components smaller and makes logic independently verifiable.
+
+- Frontend pure utils → `frontend/src/utils/`
+- API data transforms → `api/src/utils/`
+- Components themselves don't need unit tests; test the extracted logic instead
+
+### Key patterns
+
+**localStorage in Vitest:** Available via jsdom. Always `localStorage.clear()` in `beforeEach` to prevent test bleed.
+
+**Mocking `fetch` in Vitest:**
+```typescript
+vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(data) }));
+// cleanup:
+vi.unstubAllGlobals();
+```
+
+**pg row types in API transforms:** `pg` returns `COUNT(*)` and `AVG()` as strings. Transform functions accept `Record<string, unknown>` and cast explicitly — test them with string inputs like `'500'`, not numbers.

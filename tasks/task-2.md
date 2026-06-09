@@ -19,3 +19,11 @@ As you work on this task, Document the Approach, architecture, design, major cha
 
 **Decision Points:**
 - **Propose upfront:** Which aggregations should live in the database query vs. computed in the frontend? (e.g., age distribution calculation, site distribution rollup)
+
+**Human Ideas:**
+- extract reusable components
+- separate /components into actual /views and /components
+- add more tests
+- clean up App component (extract navbar and make a new view for the entrypoint)
+- link the existing pages (study overview and quality dashboard will eventually deep link and render the expanded view of the participant summary filtered on a specific study and be able to hit the back button in the browser to navigate back to the previous page (this we can add now, just not the drill into specific study from day 1) (probably requires adding react router but thats fine and cool because we need to share specific study summaries by link so it would be smart to do this too.) and also we will need a participant summary tab in the navbar that also allows us to see the aggregate summary view)
+- for this task we specifically are NOT drilling down into individual participant details. we are simply getting wiring ready to go for the future, this means no participants-blah-blah-route/#study slug, which means it should be more simple but we need to keep that functionality in mind. if i have time i might implement it as "task-4"

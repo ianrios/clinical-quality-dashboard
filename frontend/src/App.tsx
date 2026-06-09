@@ -85,7 +85,7 @@ function App() {
           </div>
         }>
           {currentPage === "overview" && <StudyOverview />}
-          {currentPage === "quality" && <QualityDashboard showPercent={showPercent} />}
+          {currentPage === "quality" && <QualityDashboard showPercent={showPercent} onShowPercentChange={setShowPercent} />}
         </Suspense>
       </main>
     </div>

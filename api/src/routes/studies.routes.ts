@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { pool } from '../db';
+import { parseOverviewRow, formatExecutionTime } from '../utils/transform';
 
 const router = Router();
 
@@ -15,11 +16,7 @@ router.get('/list', async (req: Request, res: Response) => {
 
     const executionTime = Date.now() - startTime;
 
-    res.json({
-      data: result.rows,
-      executionTime: `${executionTime}ms`,
-      executionTimeSeconds: (executionTime / 1000).toFixed(2)
-    });
+    res.json({ data: result.rows, ...formatExecutionTime(executionTime) });
   } catch (error) {
     console.error('Error fetching study list:', error);
     res.status(500).json({
@@ -46,22 +43,10 @@ router.get('/overview', async (req: Request, res: Response) => {
       ORDER BY study_id
     `);
 
-    const data = result.rows.map(row => ({
-      study_id: row.study_id,
-      study_name: row.study_name,
-      study_phase: row.study_phase,
-      participant_count: parseInt(row.participant_count),
-      total_measurements: parseInt(row.total_measurements),
-      site_count: parseInt(row.site_count)
-    }));
-
+    const data = result.rows.map(parseOverviewRow);
     const executionTime = Date.now() - startTime;
 
-    res.json({
-      data,
-      executionTime: `${executionTime}ms`,
-      executionTimeSeconds: (executionTime / 1000).toFixed(2)
-    });
+    res.json({ data, ...formatExecutionTime(executionTime) });
   } catch (error) {
     console.error('Error fetching study overview:', error);
     res.status(500).json({

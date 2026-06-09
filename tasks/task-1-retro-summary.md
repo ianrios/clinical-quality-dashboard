@@ -239,3 +239,43 @@ The chart always shows absolute measurement counts on the axis (0–60,000). The
 
 ### Colima VM disk fills up from accumulated Docker image layers
 After extended development, the Colima VM disk filled completely (I/O errors at the container level). Root cause: multiple `--build` rebuilds accumulate image layers that are never pruned. Fix: `colima delete && colima start --disk 60` for a fresh 60GB VM. Run `docker system prune` periodically to keep the VM disk clear. The prior default disk size was insufficient for sustained development work.
+
+---
+
+## Usability Phase — Investigation Findings
+
+Performance work completed in the prior phase revealed a secondary problem: all five studies have virtually identical quality distributions (~89.3% avg score, ~12,200–12,500 low-quality counts). The original readability fixes (% toggle, column tooltips, legend repositioning) addressed surface formatting but not the core visual problem — on a zero-based linear axis, a 264-unit spread across studies is invisible.
+
+### Root Cause: Axis Baseline Matters More Than Scale Type
+
+None of the standard scale transformations (log, sqrt, linear) solve narrow-range visibility because they all share the same problem: bars are measured from zero. The real fix is offering different baselines that answer different analytical questions:
+
+- **Zero baseline (grouped)**: "How large is each study's absolute count?"
+- **100% baseline (stacked normalized)**: "What fraction of each study is each quality band?"
+- **Mean baseline (deviation)**: "Which studies are above or below the cross-study average?" — most powerful for spotting outliers in tightly-clustered data
+
+### Key Decisions
+
+**Deviation mode is a chart mode, not an overlay.** It changes the axis baseline, bar direction, and the semantic meaning of bar length. It belongs in the same toggle group as Grouped/Stacked/100% — not layered on top of them.
+
+**Dot/strip plot via custom Bar shape, not a separate chart type.** Dots for this data are structurally identical to bars (same axes, same data, same bands). Using Recharts' `shape` prop on `<Bar>` means all chart infrastructure (scale, zoom, mode, band toggles) is inherited for free. A separate `ScatterChart` would duplicate that and require data reshaping.
+
+**Filters linked to chart by default, unlink is the exception.** When a coordinator filters to studies where Low Quality > 12,400, they almost certainly want the chart to match. Linked-by-default avoids chart/table disagreement confusion.
+
+**`showPercent` excluded from saved views.** It's a global display preference controlled by the navbar toggle in App.tsx, not a per-view analysis setting. Including it in view state would silently change the navbar when a view is loaded.
+
+**localStorage for saved views.** No user auth model exists. localStorage is zero-infrastructure, survives refresh, and is private to the browser. Named views stored as JSON under `regen_quality_views`; active session state under `regen_quality_active`.
+
+### Usability Phase — Before/After Capabilities
+
+| Capability | Before | After |
+|-----------|--------|-------|
+| Chart modes | 1 (grouped) | 4 (grouped, stacked, 100%, deviation) |
+| Axis baseline options | 1 (always zero) | 3 (zero, 100%, cross-study mean) |
+| Table sort | None (API order) | 6 sortable columns, bidirectional |
+| Filtering | None | 6 column filters (5 range + 1 text), chart link/unlink |
+| Settings persistence | None (resets on refresh) | Full state persists to localStorage |
+| Saved named views | None | Unlimited named snapshots |
+| Chart rendering | Rectangular bars only | Bars or dots (strip plot) |
+
+*Wall-clock implementation time: TBD — execution agent fills in after implementation.*

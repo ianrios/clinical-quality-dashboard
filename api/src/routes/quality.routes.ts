@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { pool } from '../db';
+import { parseQualityRow, formatExecutionTime } from '../utils/transform';
 
 const router = Router();
 
@@ -20,22 +21,10 @@ router.get('/distribution', async (req: Request, res: Response) => {
       ORDER BY study_id
     `);
 
-    const data = result.rows.map(row => ({
-      study_id: row.study_id,
-      study_name: row.study_name,
-      total_measurements: parseInt(row.total_measurements),
-      avg_quality_score: parseFloat(row.avg_quality_score),
-      high_quality_count: parseInt(row.high_quality_count),
-      low_quality_count: parseInt(row.low_quality_count)
-    }));
-
+    const data = result.rows.map(parseQualityRow);
     const executionTime = Date.now() - startTime;
 
-    res.json({
-      data,
-      executionTime: `${executionTime}ms`,
-      executionTimeSeconds: (executionTime / 1000).toFixed(2)
-    });
+    res.json({ data, ...formatExecutionTime(executionTime) });
   } catch (error) {
     console.error('Error fetching quality distribution:', error);
     res.status(500).json({

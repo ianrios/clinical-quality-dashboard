@@ -4,6 +4,9 @@ interface Props {
   label: string;
   tooltip: string;
   align?: 'left' | 'right';
+  onSort?: () => void;
+  isSorted?: boolean;
+  sortDir?: 'asc' | 'desc';
 }
 
 interface TooltipPos {
@@ -12,7 +15,7 @@ interface TooltipPos {
   right?: number;
 }
 
-export function TooltipHeader({ label, tooltip, align = 'right' }: Props) {
+export function TooltipHeader({ label, tooltip, align = 'right', onSort, isSorted, sortDir }: Props) {
   const [pos, setPos] = useState<TooltipPos | null>(null);
   const isLeft = align === 'left';
 
@@ -29,15 +32,22 @@ export function TooltipHeader({ label, tooltip, align = 'right' }: Props) {
       className="text-gray-400 hover:text-gray-600 cursor-help select-none"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={() => setPos(null)}
+      onClick={e => e.stopPropagation()}
     >
       ⓘ
     </span>
   );
 
   return (
-    <div className={`flex items-center gap-1 ${isLeft ? '' : 'justify-end'}`}>
+    <div
+      className={`flex items-center gap-1 ${isLeft ? '' : 'justify-end'} ${onSort ? 'cursor-pointer hover:text-gray-700' : ''}`}
+      onClick={onSort}
+    >
       {!isLeft && icon}
-      {label}
+      <span>{label}</span>
+      {isSorted && (
+        <span className="text-gray-600 text-xs">{sortDir === 'asc' ? '↑' : '↓'}</span>
+      )}
       {isLeft && icon}
       {pos && (
         <span

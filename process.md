@@ -19,3 +19,9 @@
 19. came up with a way to measure lcp pre and post task 1
 20. planned skeleton loaders and migration process with agent.
 21. discussed what indexes I should add in the migration with an agent
+22. worked on task 1 with an agent and completed the plan to improve the speed for loading the data in the ui.
+23. learned we have a missing "medium band" from .8 to .9 that could be helpful. started working on a dynamic chart display to make the data more obvious by conditionally selecting bands.
+24. added linear vs log and exp scaling and also added a smart toggle for axis domain zooming
+25. split task 1 into 2 plans, performance, now complete, and usability, now started.
+26. fixed 1 bug with the saved views module. added test coverage to sorting and filtering
+27. completed task 1

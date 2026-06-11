@@ -64,7 +64,8 @@ Before implementing any task:
 2. Only interview the user when intent is genuinely ambiguous or a decision is not covered by the plan.
 3. Explore the codebase thoroughly, then create `tasks/task-N-plan.md` with: problems discovered, which files to change, the approach and reasoning, and a verification checklist. **No code in the plan** — the execution agent writes code from the intent described. Plans describe the what and why, not the how.
 4. Create or update `tasks/task-N-retro-summary.md` during planning with: investigation findings, root cause analysis (explain the problem in plain language, not just which files), key decisions made and why, and a before/after metrics table. The execution agent fills in wall-clock numbers after implementation.
-5. The plan must be approved by the user before any code is written.
+5. Before presenting the plan to the user for approval, spawn a peer-review subagent with no prior context. Give it the plan file, the retro file, and the relevant existing source files to cross-check against. Instruct it to report only genuine gaps — things an execution agent would need a human decision on, or that would cause the implementation to fail or diverge from intent. Patch all real findings into the plan before presenting it to the user. This step has caught critical issues (missing internal wiring details, version ambiguity, index redundancy, integer division truncation) that would have required human intervention mid-implementation.
+6. The plan must be approved by the user before any code is written.
 
 ## Execution Convention
 
@@ -121,3 +122,5 @@ vi.unstubAllGlobals();
 ```
 
 **pg row types in API transforms:** `pg` returns `COUNT(*)` and `AVG()` as strings. Transform functions accept `Record<string, unknown>` and cast explicitly — test them with string inputs like `'500'`, not numbers.
+
+**`json_agg` columns from pg:** PostgreSQL `json_agg` returns a `json`-typed column. The `pg` library **auto-parses** `json`/`jsonb` columns into JavaScript objects — the value arrives as an array, not a string. Do NOT call `JSON.parse()` on these fields; use the value directly. (A fallback `typeof === 'string'` branch is acceptable for robustness.) Test transform functions with a pre-parsed array as input, not a raw JSON string.

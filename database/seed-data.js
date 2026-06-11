@@ -151,7 +151,6 @@ async function seedDatabase() {
             study.start,
             study.phase,
             participant.id,
-            participant.name,
             participant.dob,
             participant.gender,
             participant.enrollmentDate,
@@ -203,14 +202,14 @@ async function seedDatabase() {
 
 async function insertBatch(client, batch) {
   const values = batch.map((row, i) => {
-    const offset = i * 19;
-    return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, $${offset + 9}, $${offset + 10}, $${offset + 11}, $${offset + 12}, $${offset + 13}, $${offset + 14}, $${offset + 15}, $${offset + 16}, $${offset + 17}, $${offset + 18}, $${offset + 19})`;
+    const offset = i * 18;
+    return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, $${offset + 9}, $${offset + 10}, $${offset + 11}, $${offset + 12}, $${offset + 13}, $${offset + 14}, $${offset + 15}, $${offset + 16}, $${offset + 17}, $${offset + 18})`;
   }).join(',');
 
   const query = `
     INSERT INTO clinical_data_raw (
       study_id, study_name, study_start_date, study_phase,
-      participant_id, participant_name, participant_dob, participant_gender, participant_enrollment_date,
+      participant_id, participant_dob, participant_gender, participant_enrollment_date,
       site_id, site_name, site_location, site_coordinator,
       measurement_type, measurement_value, measurement_unit, measurement_timestamp,
       quality_score, quality_flags

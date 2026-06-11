@@ -5,7 +5,10 @@ import router from './routes';
 export default async (): Promise<Express> => {
   const app = express();
 
-  app.use(cors());
+  app.use(cors({
+    origin: process.env.CORS_ORIGIN?.split(',') ?? ['http://localhost:5173', 'http://localhost:3000'],
+    methods: ['GET', 'HEAD', 'OPTIONS'],
+  }));
   app.use(express.json());
 
   app.get('/health', (req: Request, res: Response) => {
@@ -14,7 +17,7 @@ export default async (): Promise<Express> => {
 
   app.use('/api', router);
 
-  app.use('*', (req: Request, res: Response) => {
+  app.use((req: Request, res: Response) => {
     res.status(404).json({ error: 'Route not found' });
   });
 

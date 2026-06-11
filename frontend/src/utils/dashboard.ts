@@ -1,4 +1,4 @@
-import type { StudyList, QualityDistribution } from '../types';
+import type { StudyOverview, QualityDistribution } from '../types';
 
 export type BandId = 'high' | 'medium' | 'low';
 export type SortKey =
@@ -30,7 +30,7 @@ export interface ViewState {
 export interface SavedView { name: string; state: ViewState; }
 
 export interface DashboardRow {
-  study: StudyList;
+  study: StudyOverview;
   quality: QualityDistribution | undefined;
   mediumCount: number | null;
 }
@@ -69,7 +69,7 @@ export function formatAvgQuality(score: number, showPercent: boolean): string {
 
 export function computeMediumCount(quality: QualityDistribution | undefined): number | null {
   if (!quality) return null;
-  return quality.total_measurements - quality.high_quality_count - quality.low_quality_count;
+  return Math.max(0, quality.total_measurements - quality.high_quality_count - quality.low_quality_count);
 }
 
 function checkRange(val: number, f: RangeFilter): boolean {
@@ -124,8 +124,8 @@ export function computeZoomDomain(
   const vals = chartData
     .flatMap(row => visibleKeys.map(k => row[k] as number))
     .filter(v => Number.isFinite(v));
-  const rMin = vals.length ? Math.min(...vals) : 0;
-  const rMax = vals.length ? Math.max(...vals) : 100000;
+  const rMin = vals.length ? vals.reduce((a, b) => Math.min(a, b), Infinity) : 0;
+  const rMax = vals.length ? vals.reduce((a, b) => Math.max(a, b), -Infinity) : 100000;
   const p = Math.max((rMax - rMin) * 0.05, 1);
   return [Math.max(0, Math.floor(rMin - p)), Math.ceil(rMax + p)];
 }

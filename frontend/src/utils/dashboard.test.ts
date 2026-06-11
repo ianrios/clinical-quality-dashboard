@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import type { QualityDistribution } from '../types';
+import type { QualityDistribution, StudyOverview } from '../types';
 import {
   truncate, formatAvgQuality, computeMediumCount,
   filterRows, sortRows, computeZoomDomain,
@@ -28,12 +28,9 @@ function makeRow(
   quality?: Partial<QualityDistribution> | null,
 ): DashboardRow {
   const q = quality === null ? undefined : makeQuality({ study_id: id, study_name: name, ...quality });
-  const mediumCount = q ? q.total_measurements - q.high_quality_count - q.low_quality_count : null;
-  return {
-    study: { study_id: id, study_name: name, study_phase: 'Phase 1' },
-    quality: q,
-    mediumCount,
-  };
+  const mediumCount = q ? Math.max(0, q.total_measurements - q.high_quality_count - q.low_quality_count) : null;
+  const study: StudyOverview = { study_id: id, study_name: name, study_phase: 'Phase 1', participant_count: 0, total_measurements: 0, site_count: 0 };
+  return { study, quality: q, mediumCount };
 }
 
 const noFilters: FilterState = DEFAULT_FILTERS;
@@ -105,9 +102,8 @@ describe('computeMediumCount', () => {
     expect(computeMediumCount(makeQuality({ total_measurements: 100, high_quality_count: 80, low_quality_count: 20 }))).toBe(0);
   });
 
-  it('can return negative when data is inconsistent', () => {
-    // No guard — callers should not produce this, but we document the behaviour
-    expect(computeMediumCount(makeQuality({ total_measurements: 100, high_quality_count: 90, low_quality_count: 20 }))).toBe(-10);
+  it('clamps to zero when high + low exceeds total', () => {
+    expect(computeMediumCount(makeQuality({ total_measurements: 100, high_quality_count: 90, low_quality_count: 20 }))).toBe(0);
   });
 });
 

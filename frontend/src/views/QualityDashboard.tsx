@@ -1,15 +1,17 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   Legend, ResponsiveContainer,
 } from 'recharts';
-import { studiesListQuery, qualityDistributionQuery } from '../api/queries';
-import { Skeleton } from './Skeleton';
-import { TooltipHeader } from './TooltipHeader';
+import { studiesOverviewQuery, qualityDistributionQuery } from '../api/queries';
+import { Skeleton } from '../components/Skeleton';
+import { TooltipHeader } from '../components/TooltipHeader';
+import { useSort, BTN_BASE, BTN_INACTIVE, btnActive } from '../utils/ui';
 import {
   type BandId, type SortKey, type FilterState, type ViewState, type SavedView,
-  ACTIVE_KEY, ACTIVE_NAME_KEY, VIEWS_KEY,
+  ACTIVE_KEY, ACTIVE_NAME_KEY,
   DEFAULT_FILTERS, DEFAULT_VIEW,
   truncate, formatAvgQuality, computeMediumCount, filterRows, sortRows, computeZoomDomain,
   loadActiveView, loadActiveViewName, loadSavedViews, persistViews,
@@ -17,43 +19,39 @@ import {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-interface Props {
-  showPercent: boolean;
-  onShowPercentChange: (v: boolean) => void;
-}
-
-function QualityDashboard({ showPercent, onShowPercentChange }: Props) {
+function QualityDashboard() {
   const [initial] = useState(() => loadActiveView());
 
   const [horizontal, setHorizontal] = useState(initial.horizontal);
   const [hiddenBands, setHiddenBands] = useState<Set<BandId>>(new Set(initial.hiddenBands));
   const [zoomed, setZoomed] = useState(initial.zoomed);
-  const [sortKey, setSortKey] = useState<SortKey>(initial.sortKey);
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>(initial.sortDir);
+  const { sortKey, sortDir, handleSort, applySort } = useSort<SortKey>(initial.sortKey, initial.sortDir);
   const [filters, setFilters] = useState<FilterState>(initial.filters);
   const [filtersLinked, setFiltersLinked] = useState(initial.filtersLinked);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [showPercent, setShowPercent] = useState(initial.showPercent);
   const [savedViews, setSavedViews] = useState<SavedView[]>(loadSavedViews);
-  const [activeViewName, setActiveViewName] = useState(() => loadActiveViewName());
+  const [activeViewName, setActiveViewName] = useState(loadActiveViewName);
   const [saveInputVisible, setSaveInputVisible] = useState(false);
   const [saveInputValue, setSaveInputValue] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   useEffect(() => {
     try { localStorage.setItem(ACTIVE_NAME_KEY, activeViewName); } catch {}
   }, [activeViewName]);
 
-  // Persist active state on every change
   useEffect(() => {
-    const state: ViewState = {
-      horizontal, hiddenBands: [...hiddenBands], zoomed,
-      sortKey, sortDir, filters, filtersLinked, showPercent,
-    };
-    try { localStorage.setItem(ACTIVE_KEY, JSON.stringify(state)); } catch {}
+    try {
+      localStorage.setItem(ACTIVE_KEY, JSON.stringify({
+        horizontal, hiddenBands: [...hiddenBands], zoomed,
+        sortKey, sortDir, filters, filtersLinked, showPercent,
+      }));
+    } catch {}
   }, [horizontal, hiddenBands, zoomed, sortKey, sortDir, filters, filtersLinked, showPercent]);
 
   // ─── Queries ───────────────────────────────────────────────────────────────
 
-  const studiesQuery = useQuery(studiesListQuery);
+  const studiesQuery = useQuery(studiesOverviewQuery);
   const qualityQuery = useQuery(qualityDistributionQuery);
 
   const studies = useMemo(() => studiesQuery.data?.data ?? [], [studiesQuery.data]);
@@ -82,7 +80,6 @@ function QualityDashboard({ showPercent, onShowPercentChange }: Props) {
 
   const sortedRows = useMemo(() => sortRows(filteredRows, sortKey, sortDir), [filteredRows, sortKey, sortDir]);
 
-  // Chart uses filtered or all rows depending on link state
   const chartRows = filtersLinked ? filteredRows : allRows;
 
   // ─── Chart data ────────────────────────────────────────────────────────────
@@ -138,30 +135,19 @@ function QualityDashboard({ showPercent, onShowPercentChange }: Props) {
     });
   };
 
-  const handleSort = (key: SortKey) => {
-    if (key === sortKey) setSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
-    else { setSortKey(key); setSortDir('asc'); }
-  };
-
   const setRangeFilter = (field: keyof Omit<FilterState, 'studyName'>, bound: 'min' | 'max', raw: string) => {
     const num = raw === '' ? null : parseFloat(raw);
     setFilters(prev => ({ ...prev, [field]: { ...(prev[field] as { min: number | null; max: number | null }), [bound]: num } }));
   };
 
-  const getCurrentState = (): ViewState => ({
-    horizontal, hiddenBands: [...hiddenBands], zoomed,
-    sortKey, sortDir, filters, filtersLinked, showPercent,
-  });
-
   const applyViewState = (state: ViewState) => {
     setHorizontal(state.horizontal);
     setHiddenBands(new Set(state.hiddenBands));
     setZoomed(state.zoomed);
-    setSortKey(state.sortKey);
-    setSortDir(state.sortDir);
+    applySort(state.sortKey, state.sortDir);
     setFilters({ ...DEFAULT_FILTERS, ...state.filters });
     setFiltersLinked(state.filtersLinked);
-    onShowPercentChange(state.showPercent);
+    setShowPercent(state.showPercent);
   };
 
   const handleSelectView = (name: string) => {
@@ -173,7 +159,8 @@ function QualityDashboard({ showPercent, onShowPercentChange }: Props) {
   const handleSaveView = () => {
     if (!saveInputValue.trim()) return;
     const name = saveInputValue.trim();
-    const updated = [...savedViews.filter(v => v.name !== name), { name, state: getCurrentState() }];
+    const state: ViewState = { horizontal, hiddenBands: [...hiddenBands], zoomed, sortKey, sortDir, filters, filtersLinked, showPercent };
+    const updated = [...savedViews.filter(v => v.name !== name), { name, state }];
     setSavedViews(updated);
     persistViews(updated);
     setSaveInputValue('');
@@ -181,13 +168,14 @@ function QualityDashboard({ showPercent, onShowPercentChange }: Props) {
     setActiveViewName(name);
   };
 
-  const handleDeleteView = (name: string) => {
-    if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) return;
-    const updated = savedViews.filter(v => v.name !== name);
+  const confirmDeleteView = () => {
+    if (!deleteTarget) return;
+    const updated = savedViews.filter(v => v.name !== deleteTarget);
     setSavedViews(updated);
     persistViews(updated);
     setActiveViewName('Default');
     applyViewState(DEFAULT_VIEW);
+    setDeleteTarget(null);
   };
 
   // ─── Tooltip strings ───────────────────────────────────────────────────────
@@ -205,15 +193,9 @@ function QualityDashboard({ showPercent, onShowPercentChange }: Props) {
     ? 'Count of measurements scoring <80% — may require review or exclusion'
     : 'Count of measurements scoring <0.8 — may require review or exclusion';
 
-  // ─── Shared bar props ──────────────────────────────────────────────────────
-
   const sortedSavedViews = useMemo(() => [...savedViews].sort((a, b) => a.name.localeCompare(b.name)), [savedViews]);
 
-  const btnBase = 'text-xs border rounded px-2 py-1 transition-colors';
-  const btnActive = (color: string) => `${btnBase} ${color}`;
-  const btnInactive = `${btnBase} text-gray-500 hover:text-gray-700 border-gray-200 hover:border-gray-300`;
-
-  // ─── Shared chart bars ─────────────────────────────────────────────────────
+  const safeNum = (n: number) => isNaN(n) ? '—' : n.toLocaleString();
 
   const sharedBars = (
     <>
@@ -241,9 +223,17 @@ function QualityDashboard({ showPercent, onShowPercentChange }: Props) {
             {sortedSavedViews.map(v => <option key={v.name} value={v.name}>{v.name}</option>)}
           </select>
           {activeViewName !== 'Default' && (
-            <button onClick={() => handleDeleteView(activeViewName)} className={`${btnBase} text-red-500 hover:text-red-700 border-red-200 hover:border-red-400`}>
-              Delete
-            </button>
+            deleteTarget === activeViewName ? (
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-gray-600">Delete "{deleteTarget}"?</span>
+                <button onClick={confirmDeleteView} className={btnActive('bg-red-600 text-white border-red-600')}>Yes</button>
+                <button onClick={() => setDeleteTarget(null)} className={BTN_INACTIVE}>Cancel</button>
+              </div>
+            ) : (
+              <button onClick={() => setDeleteTarget(activeViewName)} className={`${BTN_BASE} text-red-500 hover:text-red-700 border-red-200 hover:border-red-400`}>
+                Delete
+              </button>
+            )
           )}
           <div className="w-px h-4 bg-gray-200" />
           {saveInputVisible ? (
@@ -255,12 +245,12 @@ function QualityDashboard({ showPercent, onShowPercentChange }: Props) {
                 className="text-xs border border-gray-200 rounded px-2 py-1 w-32 focus:outline-none focus:border-blue-400"
               />
               <button onClick={handleSaveView} className={btnActive('bg-blue-600 text-white border-blue-600')}>Save</button>
-              <button onClick={() => { setSaveInputVisible(false); setSaveInputValue(''); }} className={btnInactive}>Cancel</button>
+              <button onClick={() => { setSaveInputVisible(false); setSaveInputValue(''); }} className={BTN_INACTIVE}>Cancel</button>
             </div>
           ) : (
-            <button onClick={() => setSaveInputVisible(true)} className={btnInactive}>Save current view</button>
+            <button onClick={() => setSaveInputVisible(true)} className={BTN_INACTIVE}>Save current view</button>
           )}
-          <button onClick={() => { applyViewState(DEFAULT_VIEW); setActiveViewName('Default'); }} className={btnInactive}>
+          <button onClick={() => { applyViewState(DEFAULT_VIEW); setActiveViewName('Default'); }} className={BTN_INACTIVE}>
             Reset to Default
           </button>
         </div>
@@ -284,20 +274,18 @@ function QualityDashboard({ showPercent, onShowPercentChange }: Props) {
             </div>
           ) : (
             <>
-              {/* Controls row */}
               <div className="flex items-center justify-between mb-3">
                 <button
                   onClick={() => setZoomed(p => !p)}
-                  className={zoomed ? btnActive('bg-violet-600 text-white border-violet-600') : btnInactive}
+                  className={zoomed ? btnActive('bg-violet-600 text-white border-violet-600') : BTN_INACTIVE}
                 >
                   Zoom
                 </button>
-                <button onClick={() => setHorizontal(p => !p)} className={btnInactive}>
+                <button onClick={() => setHorizontal(p => !p)} className={BTN_INACTIVE}>
                   {horizontal ? 'Vertical view' : 'Horizontal view'}
                 </button>
               </div>
 
-              {/* Chart */}
               <ResponsiveContainer width="100%" height={400}>
                 {horizontal ? (
                   <BarChart layout="vertical" data={chartData} margin={{ right: 240, left: 8 }}>
@@ -343,12 +331,31 @@ function QualityDashboard({ showPercent, onShowPercentChange }: Props) {
         <div className="border-t border-gray-200 pt-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium text-gray-900">Study Details</h3>
-            <button
-              onClick={() => setFiltersOpen(p => !p)}
-              className={`${btnBase} ${filtersOpen ? 'bg-gray-100 border-gray-300 text-gray-700' : btnInactive}`}
-            >
-              {filtersOpen ? 'Hide Filters' : 'Filters'}
-            </button>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500">0–1</span>
+                <button
+                  onClick={() => setShowPercent(prev => !prev)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                    showPercent ? 'bg-blue-600' : 'bg-gray-200'
+                  }`}
+                  role="switch"
+                  aria-checked={showPercent}
+                  aria-label="Toggle quality score format"
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                    showPercent ? 'translate-x-6' : 'translate-x-1'
+                  }`} />
+                </button>
+                <span className="text-sm text-gray-500">%</span>
+              </div>
+              <button
+                onClick={() => setFiltersOpen(p => !p)}
+                className={`${BTN_BASE} ${filtersOpen ? 'bg-gray-100 border-gray-300 text-gray-700' : BTN_INACTIVE}`}
+              >
+                {filtersOpen ? 'Hide Filters' : 'Filters'}
+              </button>
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -373,7 +380,6 @@ function QualityDashboard({ showPercent, onShowPercentChange }: Props) {
                   ))}
                 </tr>
 
-                {/* Filter row */}
                 {filtersOpen && (
                   <tr className="bg-white border-t border-gray-100">
                     <td className="px-6 py-2">
@@ -423,29 +429,44 @@ function QualityDashboard({ showPercent, onShowPercentChange }: Props) {
                   sortedRows.map(({ study, quality, mediumCount }) => (
                     <tr key={study.study_id}>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{study.study_name}</div>
+                        <div className="flex items-baseline justify-between gap-4">
+                          <Link
+                            to={`/participants?study=${study.study_id}`}
+                            className="text-sm font-medium text-gray-900 hover:text-blue-600 transition-colors"
+                          >
+                            {study.study_name}
+                          </Link>
+                          <Link
+                            to={`/participants?study=${study.study_id}`}
+                            className="text-xs text-blue-500 hover:text-blue-700 whitespace-nowrap shrink-0 transition-colors"
+                          >
+                            Participants →
+                          </Link>
+                        </div>
                         <div className="text-sm text-gray-500">{study.study_id}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
-                        {quality ? quality.total_measurements.toLocaleString() : <Skeleton className="ml-auto" />}
+                        {quality ? safeNum(quality.total_measurements) : <Skeleton className="ml-auto" />}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         {quality ? (
                           <span className={`text-sm font-medium ${
-                            quality.avg_quality_score >= 0.9 ? 'text-green-600'
-                            : quality.avg_quality_score >= 0.8 ? 'text-yellow-600'
+                            !isNaN(quality.avg_quality_score) && quality.avg_quality_score >= 0.9 ? 'text-green-600'
+                            : !isNaN(quality.avg_quality_score) && quality.avg_quality_score >= 0.8 ? 'text-yellow-600'
                             : 'text-red-600'
-                          }`}>{formatAvgQuality(quality.avg_quality_score, showPercent)}</span>
+                          }`}>
+                            {isNaN(quality.avg_quality_score) ? '—' : formatAvgQuality(quality.avg_quality_score, showPercent)}
+                          </span>
                         ) : <Skeleton className="ml-auto" />}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
-                        {quality ? quality.high_quality_count.toLocaleString() : <Skeleton className="ml-auto" />}
+                        {quality ? safeNum(quality.high_quality_count) : <Skeleton className="ml-auto" />}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
-                        {mediumCount !== null ? mediumCount.toLocaleString() : <Skeleton className="ml-auto" />}
+                        {mediumCount !== null ? safeNum(mediumCount) : <Skeleton className="ml-auto" />}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
-                        {quality ? quality.low_quality_count.toLocaleString() : <Skeleton className="ml-auto" />}
+                        {quality ? safeNum(quality.low_quality_count) : <Skeleton className="ml-auto" />}
                       </td>
                     </tr>
                   ))

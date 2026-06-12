@@ -127,11 +127,11 @@ Submit your project by emailing your Git repository URL and any notes to [george
    - Brief explanation of how you used AI tools during development
 
 ### Final Submission Checklist
-- [ ] Ensure all services start successfully with `docker compose up --build`
-- [ ] Repository is public and URL is shared
-- [ ] Task 1: Quality Dashboard optimized and working
-- [ ] Task 2: Participant Summary Report implemented and working
-- [ ] Task 3: Schema design proposal document included
-- [ ] Performance improvements documented with before/after metrics
-- [ ] Database optimization SQL files included in `database/migrations/`
-- [ ] Brief explanation of AI tool usage is included in the repository
+- [x] Ensure all services start successfully with `docker compose up --build`
+- [x] Repository is public and URL is shared
+- [x] Task 1: Quality Dashboard optimized and working
+- [x] Task 2: Participant Summary Report implemented and working
+- [x] Task 3: Schema design proposal document included
+- [x] Performance improvements documented with before/after metrics
+- [x] Database optimization SQL files included in `database/migrations/`
+- [x] Brief explanation of AI tool usage is included in the repository

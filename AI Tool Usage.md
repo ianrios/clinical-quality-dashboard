@@ -29,3 +29,4 @@
 29. used an execution agent to complete task 2, including adding tests
 30. used a code review agent to review the entire repo 2x times
 31. used a planning agent and a sub agent (for review) to create task 3 proposal
+32. retroactively created migrations split correctly based on task instead of depending on bootstrap.sql

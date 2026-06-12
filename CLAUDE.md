@@ -33,7 +33,7 @@ DOCKER_HOST="unix://$HOME/.colima/default/docker.sock" docker-compose down && DO
 
 **⚠️ Always use `--build`.** `docker-compose up` without `--build` reuses cached images and will not pick up source file changes in any service directory.
 
-**⚠️ Schema changes require `-v` to take effect.** `docker-compose down` without `-v` keeps the `pgdata` named volume. PostgreSQL's init scripts (`docker-entrypoint-initdb.d/`) only run on an empty data directory. If you change `bootstrap.sql` (e.g. adding indexes), use:
+**⚠️ Schema changes require `-v` to take effect.** `docker-compose down` without `-v` keeps the `pgdata` named volume. PostgreSQL's init scripts (`docker-entrypoint-initdb.d/`) only run on an empty data directory. If you add or change a file in `database/migrations/` (e.g. adding indexes), use:
 ```bash
 DOCKER_HOST="unix://$HOME/.colima/default/docker.sock" docker-compose down -v && DOCKER_HOST="unix://$HOME/.colima/default/docker.sock" docker-compose up -d --build
 ```
